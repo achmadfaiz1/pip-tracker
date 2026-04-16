@@ -207,7 +207,20 @@ textarea { resize: vertical; min-height: 70px; }
   </div>
   <div id="app-content" style="display:none">
   <nav class="nav">
-    
+    <div class="nav-brand">
+      <div class="nav-dot"><svg viewBox="0 0 16 16"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg></div>
+      <div><div class="nav-title">PIP Tracker</div><div class="nav-sub">Performance Improvement Plan</div></div>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-dashboard" onclick="showView('dashboard')">Dashboard</button>
+      <button class="nav-tab" id="tab-tracker" onclick="showView('tracker')">All PIPs</button>
+      <button class="nav-tab" id="tab-detail" style="display:none" onclick="showView('detail')">Detail</button>
+    </div>
+    <div class="nav-right">
+      <button class="btn-primary" onclick="openModal()">+ New PIP</button>
+      <button class="btn-logout" onclick="logout()">Sign out</button>
+    </div>
+  </nav>
   <div class="main">
     <div id="view-dashboard">
       <div class="metric-grid" id="dash-metrics"></div>
