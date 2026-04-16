@@ -172,7 +172,7 @@ textarea { resize: vertical; min-height: 70px; }
       <svg viewBox="0 0 16 16" fill="white"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg>
     </div>
     <div class="gate-title">PIP Tracker</div>
-    <div class="gate-sub">Enter your password to continue</div>
+    <div class="gate-sub">Enter the password to continue</div>
 
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">
       <label style="font-size:12px;font-weight:500;color:#888">Password</label>
@@ -188,7 +188,7 @@ textarea { resize: vertical; min-height: 70px; }
 
     <button class="btn-login" id="login-btn" onclick="tryLogin()">Sign in</button>
 
-    <div class="gate-footer">GoTo People Analytics &middot; HR use only</div>
+    <div class="gate-footer">GoTo Performance Management &middot; PAC use only</div>
   </div>
 </div>
 
@@ -304,18 +304,18 @@ textarea { resize: vertical; min-height: 70px; }
       <div class="section-divider">Employee info</div>
       <div class="form-row">
         <div class="form-group"><label>Employee name</label><input type="text" id="f-name" placeholder="Full name"></div>
-        <div class="form-group"><label>Employee ID</label><input type="text" id="f-id" placeholder="e.g. GT-12345"></div>
-        <div class="form-group"><label>Division</label><input type="text" id="f-division" placeholder="e.g. GoPay, GoRide"></div>
+        <div class="form-group"><label>Employee ID</label><input type="text" id="f-id" placeholder="e.g. G00001"></div>
+        <div class="form-group"><label>Business unit</label><select id="f-division"><option value="">Select business unit</option><option>Corporate</option><option>FinTech</option><option>ODS</option></select></div>
         <div class="form-group"><label>Level</label><select id="f-level"><option value="">Select level</option><option>L3</option><option>L4</option><option>L5</option><option>L6</option><option>L7</option><option>L8</option></select></div>
-        <div class="form-group"><label>Manager name</label><input type="text" id="f-manager" placeholder="Direct manager"></div>
-        <div class="form-group"><label>HRBP / Submitted by</label><input type="text" id="f-hrbp" placeholder="Your name"></div>
+        <div class="form-group"><label>Manager email</label><input type="email" id="f-manager" placeholder="manager@gojek.com" oninput="validateEmail(this)"></div>
+        <div class="form-group"><label>PBP email</label><input type="email" id="f-hrbp" placeholder="pbp@gojek.com" oninput="validateEmail(this)"></div>
       </div>
+      <div id="email-error" style="font-size:12px;color:#993556;display:none;margin-top:-8px">Please enter valid email addresses for Manager and PBP.</div>
       <div class="section-divider">PIP details</div>
       <div class="form-row">
         <div class="form-group"><label>PIP start date</label><input type="date" id="f-start"></div>
         <div class="form-group"><label>PIP end date</label><input type="date" id="f-end"></div>
-        <div class="form-group full"><label>Performance issue / reason</label><textarea id="f-reason" placeholder="Briefly describe the performance gap..."></textarea></div>
-        <div class="form-group full"><label>Improvement objectives</label><textarea id="f-objectives" placeholder="List specific measurable objectives..."></textarea></div>
+        <div class="form-group full"><label>PIP plan link</label><input type="text" id="f-reason" placeholder="Paste your PIP plan link here (e.g. Google Doc, Notion, Confluence)"></div>
       </div>
       <div class="section-divider">Milestones</div>
       <div class="form-row">
@@ -543,27 +543,34 @@ function showView(v){
 function openModal(){
   document.getElementById('modal-bg').classList.add('open');
   document.getElementById('save-status').textContent='';
-  document.getElementById('f-name').value='';
-  document.getElementById('f-id').value='';
+  document.getElementById('email-error').style.display='none';
+  ['f-name','f-id','f-reason','f-manager','f-hrbp','f-start','f-end','f-m1','f-m2','f-m3'].forEach(id=>{
+    document.getElementById(id).value='';
+    document.getElementById(id).style.borderColor='';
+  });
   document.getElementById('f-division').value='';
   document.getElementById('f-level').value='';
-  document.getElementById('f-manager').value='';
-  document.getElementById('f-hrbp').value='';
-  document.getElementById('f-start').value='';
-  document.getElementById('f-end').value='';
-  document.getElementById('f-reason').value='';
-  document.getElementById('f-objectives').value='';
-  document.getElementById('f-m1').value='';
-  document.getElementById('f-m2').value='';
-  document.getElementById('f-m3').value='';
 }
+function validateEmail(input){
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value);
+  input.style.borderColor = input.value && !valid ? '#D4537E' : '';
+}
+function isValidEmail(val){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val); }
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
 function openUpdateModal(id){currentUpdateId=id;const p=pips.find(x=>x.id===id);if(p){document.getElementById('u-status').value=p.status;document.getElementById('u-result').value=p.result||'';}document.getElementById('u-notes').value='';document.getElementById('update-status').textContent='';document.getElementById('update-modal-bg').classList.add('open');}
 function closeUpdateModal(){document.getElementById('update-modal-bg').classList.remove('open');}
 
 async function submitPIP(){
-  const name=document.getElementById('f-name').value.trim();if(!name){alert('Please enter employee name.');return;}
-  const pip={id:nextId++,name,empId:document.getElementById('f-id').value.trim(),division:document.getElementById('f-division').value.trim(),level:document.getElementById('f-level').value,manager:document.getElementById('f-manager').value.trim(),hrbp:document.getElementById('f-hrbp').value.trim(),start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,reason:document.getElementById('f-reason').value.trim(),objectives:document.getElementById('f-objectives').value.trim(),m1:document.getElementById('f-m1').value,m2:document.getElementById('f-m2').value,m3:document.getElementById('f-m3').value,status:'Active',result:'',notes:[],submittedAt:new Date().toISOString()};
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('Please enter employee name.');return;}
+  const managerEmail=document.getElementById('f-manager').value.trim();
+  const pbpEmail=document.getElementById('f-hrbp').value.trim();
+  if(!isValidEmail(managerEmail)||!isValidEmail(pbpEmail)){
+    document.getElementById('email-error').style.display='block';
+    return;
+  }
+  document.getElementById('email-error').style.display='none';
+  const pip={id:nextId++,name,empId:document.getElementById('f-id').value.trim(),division:document.getElementById('f-division').value.trim(),level:document.getElementById('f-level').value,manager:managerEmail,hrbp:pbpEmail,start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,reason:document.getElementById('f-reason').value.trim(),objectives:'',m1:document.getElementById('f-m1').value,m2:document.getElementById('f-m2').value,m3:document.getElementById('f-m3').value,status:'Active',result:'',notes:[],submittedAt:new Date().toISOString()};
   const btn=document.getElementById('save-btn'),st=document.getElementById('save-status');
   btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing to Sheet...');
   await sendToSheet({action:'create',...pip});
