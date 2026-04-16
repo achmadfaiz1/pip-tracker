@@ -547,30 +547,27 @@ function renderTable(){
 function viewDetail(id){
   const p=pips.find(x=>x.id===id);if(!p)return;
   currentUpdateId=id;
-  window._detailId=id;
-  const prog=daysProgress(p.start,p.end);
+  renderDetail(p);
+  showView('detail');
+}
 
+function renderDetail(p){
+  if(!p){p=pips.find(x=>x.id===currentUpdateId);if(!p)return;}
+  const prog=daysProgress(p.start,p.end);
   function fd(d){return formatDate(d);}
-  function toInput(d){
-    if(!d)return'';
-    try{const dt=new Date(d);if(!isNaN(dt))return dt.toISOString().split('T')[0];}catch(e){}
-    return String(d).substring(0,10);
-  }
-  function msDot(date,result){
-    const bg=result?'#1D9E75':(!date?'rgba(0,0,0,0.15)':'#9FE1CB');
-    return `<div style="width:10px;height:10px;border-radius:50%;background:${bg};flex-shrink:0;margin-top:14px"></div>`;
-  }
-  function msRow(label,dateVal,resultVal,dKey,rKey){
-    return `<div style="display:flex;gap:12px;align-items:flex-start">
-      ${msDot(dateVal,resultVal)}
+  function msCard(label,dateVal,resultVal){
+    const done=!!resultVal;
+    const dotColor=done?'#1D9E75':(!dateVal?'rgba(0,0,0,0.15)':'#9FE1CB');
+    return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:5px"></div>
       <div style="flex:1">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <div><div style="font-size:13px;font-weight:500">${label}</div><div style="font-size:11px;color:#888;margin-top:2px">${dateVal?fd(dateVal):'No date set'}</div></div>
-          <button class="btn-sm" style="font-size:11px" onclick="window.openMS(${id},'${dKey}','${rKey}')">Edit</button>
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font-size:13px;font-weight:500">${label}</span>
+          <span style="font-size:11px;color:#888">${dateVal?fd(dateVal):'No date set'}</span>
         </div>
         ${resultVal
-          ?`<div style="margin-top:6px;padding:6px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041">${resultVal}</div>`
-          :`<div style="margin-top:4px;font-size:11px;color:#bbb;font-style:italic">No result recorded yet</div>`}
+          ?`<div style="margin-top:5px;padding:6px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041;line-height:1.4">${resultVal}</div>`
+          :`<div style="margin-top:3px;font-size:11px;color:#bbb;font-style:italic">No result recorded yet</div>`}
       </div>
     </div>`;
   }
@@ -583,63 +580,90 @@ function viewDetail(id){
           <div style="font-size:15px;font-weight:500">${p.name} <span style="font-size:12px;color:#888;font-weight:400">${p.empId}</span></div>
           <div style="font-size:12px;color:#888;margin-top:2px">${p.division} · ${p.level} · Manager: ${p.manager}</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">${statusBadge(p.status)} ${resultBadge(p.result)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${statusBadge(p.status)} ${resultBadge(p.result)}
+          <button class="btn-teal-outline" onclick="openEditPIP(${p.id})" style="margin-left:4px">Edit PIP</button>
+        </div>
       </div>
-      <div class="detail-body">
-        <div class="detail-section">
-          <h3>PIP overview</h3>
-          <div class="detail-field"><div class="detail-field-label">PBP email</div><div class="detail-field-value" style="font-weight:400">${p.hrbp}</div></div>
-          <div class="detail-field">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div class="detail-field-label">Period</div>
-              <button class="btn-sm" style="font-size:11px" onclick="window.openED(${id})">Edit dates</button>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:0.5px solid rgba(0,0,0,0.06)">
+
+        <div style="padding:1.5rem;border-right:0.5px solid rgba(0,0,0,0.06)">
+          <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:1rem">PIP overview</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
+            <div>
+              <div style="font-size:11px;color:#888;margin-bottom:2px">Business unit</div>
+              <div style="font-size:13px;font-weight:500">${p.division||'—'}</div>
             </div>
-            <div class="detail-field-value">${fd(p.start)} → ${fd(p.end)}</div>
-          </div>
-          <div class="detail-field">
-            <div class="detail-field-label">Progress</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
-              <div class="prog-wrap" style="width:120px"><div class="prog-bar" style="width:${prog}%"></div></div>
-              <span style="font-size:12px;color:#888">${prog}%</span>
+            <div>
+              <div style="font-size:11px;color:#888;margin-bottom:2px">Level</div>
+              <div style="font-size:13px;font-weight:500">${p.level||'—'}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#888;margin-bottom:2px">Manager email</div>
+              <div style="font-size:13px;word-break:break-all">${p.manager||'—'}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#888;margin-bottom:2px">PBP email</div>
+              <div style="font-size:13px;word-break:break-all">${p.hrbp||'—'}</div>
             </div>
           </div>
-          <div class="detail-field">
-            <div class="detail-field-label">PIP plan link</div>
-            <div style="font-size:13px;margin-top:2px">
-              ${p.reason?`<a href="${p.reason}" target="_blank" style="color:#0F6E56;word-break:break-all">${p.reason}</a>`:'<span style="color:#bbb;font-style:italic">No link provided</span>'}
+
+          <div style="margin-bottom:1rem">
+            <div style="font-size:11px;color:#888;margin-bottom:2px">PIP period</div>
+            <div style="font-size:13px;font-weight:500">${fd(p.start)} → ${fd(p.end)}</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+              <div class="prog-wrap" style="width:100%;flex:1"><div class="prog-bar" style="width:${prog}%"></div></div>
+              <span style="font-size:11px;color:#888;white-space:nowrap">${prog}%</span>
             </div>
           </div>
+
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:4px">PIP plan link</div>
+            ${p.reason
+              ?`<a href="${p.reason}" target="_blank" style="font-size:13px;color:#0F6E56;word-break:break-all">${p.reason}</a>`
+              :`<span style="font-size:13px;color:#bbb;font-style:italic">No link provided</span>`}
+          </div>
+
           ${p.notes&&p.notes.length?`
-          <div class="detail-field">
-            <div class="detail-field-label">Update notes</div>
-            <div class="timeline" style="margin-top:6px">${p.notes.map(n=>`
-              <div class="tl-item"><div class="tl-dot"></div><div><div class="tl-text">${n.text}</div><div class="tl-date">${n.date}</div></div></div>`).join('')}
-            </div>
+          <div style="margin-top:1rem;padding-top:1rem;border-top:0.5px solid rgba(0,0,0,0.06)">
+            <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:10px">Status notes</div>
+            ${p.notes.map(n=>`
+              <div style="display:flex;gap:8px;margin-bottom:8px">
+                <div style="width:6px;height:6px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:5px"></div>
+                <div><div style="font-size:13px">${n.text}</div><div style="font-size:11px;color:#888;margin-top:1px">${n.date}</div></div>
+              </div>`).join('')}
           </div>`:''}
         </div>
-        <div class="detail-section">
-          <h3>Milestones & check-in results</h3>
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:4px"></div>
-              <div><div style="font-size:13px;font-weight:500">PIP started</div><div style="font-size:11px;color:#888;margin-top:2px">${fd(p.start)}</div></div>
+
+        <div style="padding:1.5rem">
+          <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:1rem">Milestones & check-in results</div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+            <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:5px"></div>
+            <div style="flex:1;display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font-size:13px;font-weight:500">PIP started</span>
+              <span style="font-size:11px;color:#888">${fd(p.start)}</span>
             </div>
-            ${msRow('30-day check-in',p.m1,p.m1result||'','m1','m1result')}
-            ${msRow('60-day check-in',p.m2,p.m2result||'','m2','m2result')}
-            ${msRow('Final review',p.m3,p.m3result||'','m3','m3result')}
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:4px"></div>
-              <div><div style="font-size:13px;font-weight:500">PIP closes</div><div style="font-size:11px;color:#888;margin-top:2px">${fd(p.end)}</div></div>
+          </div>
+          ${msCard('30-day check-in',p.m1,p.m1result||'')}
+          ${msCard('60-day check-in',p.m2,p.m2result||'')}
+          ${msCard('Final review',p.m3,p.m3result||'')}
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0">
+            <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:5px"></div>
+            <div style="flex:1;display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font-size:13px;font-weight:500">PIP closes</span>
+              <span style="font-size:11px;color:#888">${fd(p.end)}</span>
             </div>
           </div>
         </div>
       </div>
+
       <div class="detail-actions">
-        <button class="btn-teal-outline" onclick="openUpdateModal(${id})">Update status / result</button>
-        <button class="btn-outline" onclick="showView('tracker')">Back to list</button>
+        <button class="btn-outline" onclick="showView('tracker')">← Back to list</button>
       </div>
     </div>`;
-  showView('detail');
 }
 
 function toInputDate(d){
@@ -648,60 +672,83 @@ function toInputDate(d){
   return String(d).substring(0,10);
 }
 
-window.openMS = function(id, dKey, rKey){
-  currentUpdateId=id;
-  window._msKeys={dKey,rKey};
-  const p=pips.find(x=>x.id===id);if(!p)return;
-  const labels={m1:'30-day check-in',m2:'60-day check-in',m3:'Final review'};
-  document.getElementById('ms-modal-title').textContent='Edit '+( labels[dKey]||dKey);
-  document.getElementById('ms-date-label').textContent=(labels[dKey]||dKey)+' date';
-  document.getElementById('ms-date').value=toInputDate(p[dKey]);
-  document.getElementById('ms-result').value=p[rKey]||'';
-  document.getElementById('ms-save-status').textContent='';
-  document.getElementById('ms-save-btn').disabled=false;
-  document.getElementById('ms-save-btn').textContent='Save';
-  document.getElementById('ms-modal-bg').classList.add('open');
-};
-
-window.openED = function(id){
+window.openEditPIP = function(id){
   currentUpdateId=id;
   const p=pips.find(x=>x.id===id);if(!p)return;
-  document.getElementById('ed-start').value=toInputDate(p.start);
-  document.getElementById('ed-end').value=toInputDate(p.end);
-  document.getElementById('ed-m1').value=toInputDate(p.m1);
-  document.getElementById('ed-m2').value=toInputDate(p.m2);
-  document.getElementById('ed-m3').value=toInputDate(p.m3);
-  document.getElementById('ed-save-status').textContent='';
-  document.getElementById('ed-save-btn').disabled=false;
-  document.getElementById('ed-save-btn').textContent='Save';
-  document.getElementById('ed-modal-bg').classList.add('open');
+  // Employee info
+  document.getElementById('ep-name').value=p.name||'';
+  document.getElementById('ep-id').value=p.empId||'';
+  document.getElementById('ep-division').value=p.division||'';
+  document.getElementById('ep-level').value=p.level||'';
+  document.getElementById('ep-manager').value=p.manager||'';
+  document.getElementById('ep-hrbp').value=p.hrbp||'';
+  // Dates & link
+  document.getElementById('ep-start').value=toInputDate(p.start);
+  document.getElementById('ep-end').value=toInputDate(p.end);
+  document.getElementById('ep-reason').value=p.reason||'';
+  // Milestones
+  document.getElementById('ep-m1').value=toInputDate(p.m1);
+  document.getElementById('ep-m1r').value=p.m1result||'';
+  document.getElementById('ep-m2').value=toInputDate(p.m2);
+  document.getElementById('ep-m2r').value=p.m2result||'';
+  document.getElementById('ep-m3').value=toInputDate(p.m3);
+  document.getElementById('ep-m3r').value=p.m3result||'';
+  // Status
+  document.getElementById('ep-status').value=p.status||'Active';
+  document.getElementById('ep-result').value=p.result||'';
+  document.getElementById('ep-note').value='';
+  document.getElementById('ep-save-status').textContent='';
+  document.getElementById('ep-save-btn').disabled=false;
+  document.getElementById('ep-save-btn').textContent='Save changes';
+  document.getElementById('ep-modal-bg').classList.add('open');
 };
 
-async function saveMilestone(){
+async function saveEditPIP(){
   const p=pips.find(x=>x.id===currentUpdateId);if(!p)return;
-  const {dKey,rKey}=window._msKeys;
-  p[dKey]=document.getElementById('ms-date').value;
-  p[rKey]=document.getElementById('ms-result').value.trim();
-  const btn=document.getElementById('ms-save-btn'),st=document.getElementById('ms-save-status');
+  // Update all fields in local array immediately
+  p.name=document.getElementById('ep-name').value.trim();
+  p.empId=document.getElementById('ep-id').value.trim();
+  p.division=document.getElementById('ep-division').value;
+  p.level=document.getElementById('ep-level').value;
+  p.manager=document.getElementById('ep-manager').value.trim();
+  p.hrbp=document.getElementById('ep-hrbp').value.trim();
+  p.start=document.getElementById('ep-start').value;
+  p.end=document.getElementById('ep-end').value;
+  p.reason=document.getElementById('ep-reason').value.trim();
+  p.m1=document.getElementById('ep-m1').value;
+  p.m1result=document.getElementById('ep-m1r').value.trim();
+  p.m2=document.getElementById('ep-m2').value;
+  p.m2result=document.getElementById('ep-m2r').value.trim();
+  p.m3=document.getElementById('ep-m3').value;
+  p.m3result=document.getElementById('ep-m3r').value.trim();
+  p.status=document.getElementById('ep-status').value;
+  p.result=document.getElementById('ep-result').value;
+  const note=document.getElementById('ep-note').value.trim();
+  if(note) p.notes.push({text:note,date:new Date().toISOString().split('T')[0]});
+
+  const btn=document.getElementById('ep-save-btn'),st=document.getElementById('ep-save-status');
   btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing...');
-  await sendToSheet({action:'update',...p,m1result:p.m1result||'',m2result:p.m2result||'',m3result:p.m3result||''});
-  document.getElementById('ms-modal-bg').classList.remove('open');
-  await loadFromSheet();
+
+  // Update UI immediately without full reload
+  document.getElementById('ep-modal-bg').classList.remove('open');
+  renderDetail(p);
+  renderDashboard();
+
+  // Sync to sheet in background
+  await sendToSheet({action:'update',...p});
+  setSaveStatus(st,'ok','Saved');
 }
 
-async function saveDates(){
-  const p=pips.find(x=>x.id===currentUpdateId);if(!p)return;
-  p.start=document.getElementById('ed-start').value;
-  p.end=document.getElementById('ed-end').value;
-  p.m1=document.getElementById('ed-m1').value;
-  p.m2=document.getElementById('ed-m2').value;
-  p.m3=document.getElementById('ed-m3').value;
-  const btn=document.getElementById('ed-save-btn'),st=document.getElementById('ed-save-status');
-  btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing...');
-  await sendToSheet({action:'update',...p,m1result:p.m1result||'',m2result:p.m2result||'',m3result:p.m3result||''});
-  document.getElementById('ed-modal-bg').classList.remove('open');
-  await loadFromSheet();
+
+function toInputDate(d){
+  if(!d)return'';
+  try{const dt=new Date(d);if(!isNaN(dt))return dt.toISOString().split('T')[0];}catch(e){}
+  return String(d).substring(0,10);
 }
+;
+;
+
+
 
 
 function showView(v){
@@ -764,23 +811,359 @@ async function saveUpdate(){
 }
 
 if(sessionStorage.getItem('pip_auth')==='true') loadFromSheet();
-</script>
+</script>>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIP Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+input[type=email] { padding: 8px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: #f5f5f3; font-size: 13px; color: #1a1a1a; outline: none; font-family: inherit; width: 100%; }
+input[type=email]:focus { border-color: #1D9E75; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; }
 
-<!-- Milestone Edit Modal -->
-<div class="modal-bg" id="ms-modal-bg">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-head"><h2 id="ms-modal-title">Edit milestone</h2><button class="modal-close" onclick="document.getElementById('ms-modal-bg').classList.remove('open')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label id="ms-date-label">Date</label><input type="date" id="ms-date"></div>
-      <div class="form-group"><label>Check-in result / notes</label><textarea id="ms-result" placeholder="e.g. On track — attendance improved to 95%, meeting all objectives..." style="min-height:100px"></textarea></div>
+/* ── LOGIN GATE ─────────────────────────────── */
+#gate-screen {
+  min-height: 100vh; display: flex; align-items: center;
+  justify-content: center; padding: 1rem;
+}
+.gate {
+  background: #fff; border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 12px; padding: 2.5rem; width: 100%; max-width: 380px;
+}
+.gate-logo { width: 40px; height: 40px; border-radius: 10px; background: #1D9E75; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
+.gate-title { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+.gate-sub { font-size: 13px; color: #888; margin-bottom: 2rem; }
+.pw-wrap { position: relative; }
+.pw-wrap input { width: 100%; padding: 9px 40px 9px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: #f5f5f3; font-size: 13px; color: #1a1a1a; outline: none; font-family: inherit; }
+.pw-wrap input:focus { border-color: #1D9E75; }
+.pw-wrap input.error { border-color: #D4537E; }
+.pw-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; padding: 2px; display: flex; align-items: center; }
+.pw-toggle:hover { color: #1a1a1a; }
+.error-msg { font-size: 12px; color: #993556; margin-top: 6px; display: none; }
+.error-msg.show { display: block; }
+.btn-login { width: 100%; padding: 10px; border-radius: 8px; background: #1D9E75; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 1rem; transition: background 0.15s; }
+.btn-login:hover { background: #0F6E56; }
+.btn-login:disabled { background: #9FE1CB; cursor: not-allowed; }
+.gate-footer { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 0.5px solid rgba(0,0,0,0.1); font-size: 12px; color: #888; text-align: center; }
+.shake { animation: shake 0.35s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+
+/* ── APP ─────────────────────────────────────── */
+#app-root { display: none; }
+.nav { background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.1); padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 50; }
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-dot { width: 28px; height: 28px; border-radius: 8px; background: #1D9E75; display: flex; align-items: center; justify-content: center; }
+.nav-dot svg { width: 16px; height: 16px; fill: white; }
+.nav-title { font-size: 15px; font-weight: 500; }
+.nav-sub { font-size: 12px; color: #888; }
+.nav-tabs { display: flex; gap: 4px; }
+.nav-tab { padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: #888; transition: all 0.15s; }
+.nav-tab:hover { background: #f5f5f3; color: #1a1a1a; }
+.nav-tab.active { background: #E1F5EE; color: #0F6E56; font-weight: 500; }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.btn-logout { padding: 5px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; font-size: 12px; color: #888; cursor: pointer; }
+.btn-logout:hover { background: #f5f5f3; color: #1a1a1a; }
+.main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+.btn-primary { padding: 7px 16px; border-radius: 8px; background: #1D9E75; color: white; border: none; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.btn-primary:hover { background: #0F6E56; }
+.btn-primary:disabled { background: #9FE1CB; cursor: not-allowed; }
+.btn-outline { padding: 7px 14px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; font-size: 12px; color: #1a1a1a; cursor: pointer; }
+.btn-outline:hover { background: #f5f5f3; }
+.btn-teal-outline { padding: 7px 14px; border-radius: 8px; border: 0.5px solid #1D9E75; background: transparent; font-size: 12px; color: #0F6E56; cursor: pointer; font-weight: 500; }
+.btn-teal-outline:hover { background: #E1F5EE; }
+.btn-sm { padding: 5px 10px; border-radius: 8px; font-size: 12px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; color: #888; cursor: pointer; }
+.btn-sm:hover { background: #f5f5f3; }
+
+.metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.metric-card { background: #efefed; border-radius: 8px; padding: 1rem; }
+.metric-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.metric-value { font-size: 26px; font-weight: 500; }
+.metric-sub { font-size: 11px; color: #888; margin-top: 4px; }
+.v-teal{color:#0F6E56}.v-amber{color:#BA7517}.v-pink{color:#993556}.v-blue{color:#185FA5}.v-green{color:#3B6D11}
+
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.chart-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 1.25rem; }
+.chart-card.full { grid-column: 1 / -1; }
+.chart-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.chart-sub { font-size: 11px; color: #888; margin-bottom: 1rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #888; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* Division breakdown scrollable table */
+.div-scroll { overflow-x: auto; overflow-y: auto; max-height: 300px; }
+.div-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 640px; }
+.div-table th { position: sticky; top: 0; z-index: 3; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; color: #888; padding: 8px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.1); background: #f5f5f3; text-align: left; white-space: nowrap; }
+.div-table td { padding: 9px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.07); white-space: nowrap; }
+.div-table tr:last-child td { border-bottom: none; }
+.div-table tr:hover td { background: #f5f5f3; }
+.div-table th.div-freeze, .div-table td.div-freeze { position: sticky; left: 0; z-index: 2; background: #fff; border-right: 0.5px solid rgba(0,0,0,0.1); min-width: 140px; }
+.div-table th.div-freeze { z-index: 4; background: #f5f5f3; }
+.mini-bar-wrap { width: 60px; height: 5px; background: rgba(0,0,0,0.1); border-radius: 100px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.mini-bar { height: 100%; border-radius: 100px; background: #1D9E75; }
+
+/* Main PIP table */
+.table-wrap { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; }
+.table-header { padding: 1rem 1.25rem; border-bottom: 0.5px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.table-header-left { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+.search-input { flex: 1; min-width: 160px; max-width: 240px; padding: 7px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: #f5f5f3; font-size: 13px; color: #1a1a1a; outline: none; }
+.search-input:focus { border-color: #1D9E75; }
+.filter-select { padding: 7px 10px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: #f5f5f3; font-size: 13px; color: #1a1a1a; outline: none; cursor: pointer; }
+.table-scroll { overflow-x: auto; overflow-y: auto; max-height: 420px; }
+table.pip-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 860px; }
+table.pip-table th { position: sticky; top: 0; z-index: 3; padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.5px; background: #f5f5f3; border-bottom: 0.5px solid rgba(0,0,0,0.1); white-space: nowrap; }
+table.pip-table td { padding: 11px 14px; border-bottom: 0.5px solid rgba(0,0,0,0.07); color: #1a1a1a; vertical-align: middle; white-space: nowrap; }
+table.pip-table tr:last-child td { border-bottom: none; }
+table.pip-table tr:hover td { background: #f5f5f3; }
+table.pip-table th.col-freeze, table.pip-table td.col-freeze { position: sticky; left: 0; z-index: 2; background: #fff; border-right: 0.5px solid rgba(0,0,0,0.1); min-width: 160px; }
+table.pip-table th.col-freeze { z-index: 4; background: #f5f5f3; }
+table.pip-table tr:hover td.col-freeze { background: #f5f5f3; }
+
+.name-cell { font-weight: 500; }
+.sub-cell { font-size: 11px; color: #888; margin-top: 2px; }
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 100px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.badge-active{background:#E1F5EE;color:#085041}.badge-completed{background:#E6F1FB;color:#0C447C}.badge-extended{background:#FAEEDA;color:#633806}.badge-failed{background:#FBEAF0;color:#72243E}
+.badge-wl1{background:#FAEEDA;color:#633806}.badge-wl2{background:#FAECE7;color:#712B13}.badge-wl3{background:#FBEAF0;color:#72243E}.badge-nowl{background:#EAF3DE;color:#27500A}.badge-pending{background:#f5f5f3;color:#888}
+.prog-wrap { width: 70px; height: 5px; background: rgba(0,0,0,0.1); border-radius: 100px; overflow: hidden; display: inline-block; }
+.prog-bar { height: 100%; border-radius: 100px; background: #1D9E75; }
+.empty { text-align: center; padding: 3rem; color: #888; font-size: 14px; }
+.sync-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 8px; }
+.sync-ok{background:#E1F5EE;color:#085041}.sync-err{background:#FBEAF0;color:#72243E}.sync-ing{background:#f5f5f3;color:#888}
+
+.detail-wrap { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; }
+.detail-head { padding: 1.25rem 1.5rem; border-bottom: 0.5px solid rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.detail-avatar { width: 40px; height: 40px; border-radius: 50%; background: #E1F5EE; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: #085041; flex-shrink: 0; }
+.detail-body { padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.detail-section h3 { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 12px; }
+.detail-field { margin-bottom: 12px; }
+.detail-field-label { font-size: 11px; color: #888; margin-bottom: 2px; }
+.detail-field-value { font-size: 13px; font-weight: 500; }
+.timeline { display: flex; flex-direction: column; gap: 10px; }
+.tl-item { display: flex; gap: 12px; align-items: flex-start; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; background: #1D9E75; flex-shrink: 0; margin-top: 4px; }
+.tl-dot.gray { background: rgba(0,0,0,0.15); }
+.tl-text { font-size: 13px; }
+.tl-date { font-size: 11px; color: #888; margin-top: 2px; }
+.detail-actions { padding: 1rem 1.5rem; border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; gap: 8px; flex-wrap: wrap; }
+
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-start; justify-content: center; padding: 2rem 1rem; overflow-y: auto; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.1); width: 100%; max-width: 620px; margin: auto; }
+.modal-head { padding: 1.25rem 1.5rem; border-bottom: 0.5px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; }
+.modal-head h2 { font-size: 15px; font-weight: 500; }
+.modal-close { background: none; border: none; cursor: pointer; font-size: 18px; color: #888; padding: 2px 6px; border-radius: 4px; }
+.modal-close:hover { background: #f5f5f3; }
+.modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.modal-foot { padding: 1rem 1.5rem; border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 12px; font-weight: 500; color: #888; }
+input[type=text], input[type=date], input[type=password], select, textarea { padding: 8px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: #f5f5f3; font-size: 13px; color: #1a1a1a; outline: none; font-family: inherit; width: 100%; }
+input:focus, select:focus, textarea:focus { border-color: #1D9E75; }
+textarea { resize: vertical; min-height: 70px; }
+.section-divider { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 6px; border-bottom: 0.5px solid rgba(0,0,0,0.1); }
+.gs-note { background: #E1F5EE; border: 0.5px solid #5DCAA5; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #085041; display: flex; align-items: center; gap: 8px; }
+
+@media (max-width: 700px) {
+  .metric-grid { grid-template-columns: 1fr 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-card.full { grid-column: 1; }
+  .form-row { grid-template-columns: 1fr; }
+  .detail-body { grid-template-columns: 1fr; }
+  .nav-tabs { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN GATE ─────────────────────────────── -->
+<div id="gate-screen">
+  <div class="gate">
+    <div class="gate-logo">
+      <svg viewBox="0 0 16 16" fill="white"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg>
     </div>
-    <div class="modal-foot">
-      <span id="ms-save-status"></span>
-      <button class="btn-outline" onclick="document.getElementById('ms-modal-bg').classList.remove('open')">Cancel</button>
-      <button class="btn-primary" id="ms-save-btn" onclick="saveMilestone()">Save</button>
+    <div class="gate-title">PIP Tracker</div>
+    <div class="gate-sub">Enter the password to continue</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">
+      <label style="font-size:12px;font-weight:500;color:#888">Password</label>
+      <div class="pw-wrap" id="pw-wrap">
+        <input type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')tryLogin()" style="padding-right:40px">
+        <button class="pw-toggle" onclick="togglePw()" tabindex="-1">
+          <svg id="eye-show" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>
+          <svg id="eye-hide" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"><path d="M1 8s2.5-5 7-5 5.3 3.1 6.7 4.7M1 1l14 14M6.5 6.6a2 2 0 002.9 2.8"/></svg>
+        </button>
+      </div>
+      <div class="error-msg" id="error-msg">Incorrect password. Please try again.</div>
+    </div>
+
+    <button class="btn-login" id="login-btn" onclick="tryLogin()">Sign in</button>
+
+    <div class="gate-footer">GoTo Performance Management &middot; PAC use only</div>
+  </div>
+</div>
+
+<!-- ── APP ─────────────────────────────────────── -->
+<div id="app-root">
+  <div id="app-loading" style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+    <div style="width:28px;height:28px;border-radius:8px;background:#1D9E75;display:flex;align-items:center;justify-content:center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg>
+    </div>
+    <div style="font-size:13px;color:#888">Loading PIP data from Google Sheet...</div>
+  </div>
+  <div id="load-error" style="display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:2rem">
+    <div style="font-size:15px;font-weight:500">Could not load data</div>
+    <div style="font-size:13px;color:#888">Check your Apps Script URL or network connection.</div>
+    <button class="btn-primary" onclick="loadFromSheet()">Retry</button>
+  </div>
+  <div id="app-content" style="display:none">
+  <nav class="nav">
+    <div class="nav-brand">
+      <div class="nav-dot"><svg viewBox="0 0 16 16"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg></div>
+      <div><div class="nav-title">PIP Tracker</div><div class="nav-sub">Performance Improvement Plan</div></div>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-dashboard" onclick="showView('dashboard')">Dashboard</button>
+      <button class="nav-tab" id="tab-tracker" onclick="showView('tracker')">All PIPs</button>
+      <button class="nav-tab" id="tab-detail" style="display:none" onclick="showView('detail')">Detail</button>
+    </div>
+    <div class="nav-right">
+      <button class="btn-outline" onclick="loadFromSheet()" style="font-size:12px">↻ Refresh</button>
+      <button class="btn-primary" onclick="openModal()">+ New PIP</button>
+      <button class="btn-logout" onclick="logout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="main">
+    <div id="view-dashboard">
+      <div class="metric-grid" id="dash-metrics"></div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">PIP status breakdown</div>
+          <div class="chart-sub">Current distribution across all active cycles</div>
+          <div class="legend" id="legend-status"></div>
+          <div style="position:relative;width:100%;height:200px"><canvas id="chart-status" role="img" aria-label="Donut chart PIP status"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">PIP results</div>
+          <div class="chart-sub">Outcome distribution for closed PIPs</div>
+          <div class="legend" id="legend-result"></div>
+          <div style="position:relative;width:100%;height:200px"><canvas id="chart-result" role="img" aria-label="Donut chart PIP results"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">PIPs by division</div>
+          <div class="chart-sub">Count of submissions per business unit</div>
+          <div style="position:relative;width:100%;height:220px"><canvas id="chart-division" role="img" aria-label="Bar chart by division"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">PIPs by level</div>
+          <div class="chart-sub">Distribution across employee levels</div>
+          <div style="position:relative;width:100%;height:220px"><canvas id="chart-level" role="img" aria-label="Bar chart by level"></canvas></div>
+        </div>
+        <div class="chart-card full">
+          <div class="chart-title">Division breakdown</div>
+          <div class="chart-sub">Status and result summary per business unit</div>
+          <div class="div-scroll">
+            <table class="div-table" id="div-breakdown-table"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-tracker" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-header-left">
+            <input class="search-input" placeholder="Search employee, manager, division..." oninput="renderTable()" id="search-input">
+            <select class="filter-select" onchange="renderTable()" id="filter-status">
+              <option value="">All status</option>
+              <option>Active</option><option>Completed</option><option>Extended</option><option>Failed</option>
+            </select>
+            <select class="filter-select" onchange="renderTable()" id="filter-result">
+              <option value="">All results</option>
+              <option>WL1</option><option>WL2</option><option>WL3</option><option value="No WL">No WL</option>
+            </select>
+          </div>
+          <span id="row-count" style="font-size:12px;color:#888;white-space:nowrap"></span>
+        </div>
+        <div class="table-scroll">
+          <table class="pip-table">
+            <thead><tr>
+              <th class="col-freeze">Employee</th>
+              <th>Division / Level</th><th>Manager</th><th>HRBP</th>
+              <th>PIP period</th><th>Progress</th><th>Status</th><th>Result</th><th></th>
+            </tr></thead>
+            <tbody id="pip-table-body"></tbody>
+          </table>
+          <div id="empty-state" class="empty" style="display:none">No PIP records found.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-detail" style="display:none">
+      <button class="btn-outline" style="margin-bottom:1rem" onclick="showView('tracker')">← Back to all PIPs</button>
+      <div id="detail-content"></div>
     </div>
   </div>
 </div>
+
+<!-- New PIP Modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-head"><h2>Submit new PIP</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="gs-note"><svg width="14" height="14" viewBox="0 0 16 16" fill="#0F6E56"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg>Submissions sync live to Performance Team Google Sheet.</div>
+      <div class="section-divider">Employee info</div>
+      <div class="form-row">
+        <div class="form-group"><label>Employee name</label><input type="text" id="f-name" placeholder="Full name"></div>
+        <div class="form-group"><label>Employee ID</label><input type="text" id="f-id" placeholder="e.g. G00001"></div>
+        <div class="form-group"><label>Business unit</label><select id="f-division"><option value="">Select business unit</option><option>Corporate</option><option>FinTech</option><option>ODS</option></select></div>
+        <div class="form-group"><label>Level</label><select id="f-level"><option value="">Select level</option><option>L3</option><option>L4</option><option>L5</option><option>L6</option><option>L7</option><option>L8</option></select></div>
+        <div class="form-group"><label>Manager email</label><input type="email" id="f-manager" placeholder="manager@gojek.com" oninput="validateEmail(this)"></div>
+        <div class="form-group"><label>PBP email</label><input type="email" id="f-hrbp" placeholder="pbp@gojek.com" oninput="validateEmail(this)"></div>
+      </div>
+      <div id="email-error" style="font-size:12px;color:#993556;display:none;margin-top:-8px">Please enter valid email addresses for Manager and PBP.</div>
+      <div class="section-divider">PIP details</div>
+      <div class="form-row">
+        <div class="form-group"><label>PIP start date</label><input type="date" id="f-start"></div>
+        <div class="form-group"><label>PIP end date</label><input type="date" id="f-end"></div>
+        <div class="form-group full"><label>PIP plan link</label><input type="text" id="f-reason" placeholder="Paste your PIP plan link here (e.g. Google Doc, Notion, Confluence)"></div>
+      </div>
+      <div class="section-divider">Milestones</div>
+      <div class="form-row">
+        <div class="form-group"><label>30-day check-in</label><input type="date" id="f-m1"></div>
+        <div class="form-group"><label>60-day check-in</label><input type="date" id="f-m2"></div>
+        <div class="form-group"><label>Final review</label><input type="date" id="f-m3"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span id="save-status"></span>
+      <button class="btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" id="save-btn" onclick="submitPIP()">Save PIP</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal-bg" id="update-modal-bg">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h2>Update PIP status</h2><button class="modal-close" onclick="closeUpdateModal()">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Status</label><select id="u-status"><option>Active</option><option>Completed</option><option>Extended</option><option>Failed</option></select></div>
+      <div class="form-group"><label>Result</label><select id="u-result"><option value="">— pending —</option><option value="No WL">No WL (passed)</option><option value="WL1">Warning Letter 1</option><option value="WL2">Warning Letter 2</option><option value="WL3">Warning Letter 3</option></select></div>
+      <div class="form-group"><label>Notes</label><textarea id="u-notes" placeholder="Add a status update note..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <span id="update-status"></span>
+      <button class="btn-outline" onclick="closeUpdateModal()">Cancel</button>
+      <button class="btn-primary" id="update-btn" onclick="saveUpdate()">Save update</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- Edit Dates Modal -->
 <div class="modal-bg" id="ed-modal-bg">
@@ -799,6 +1182,81 @@ if(sessionStorage.getItem('pip_auth')==='true') loadFromSheet();
       <span id="ed-save-status"></span>
       <button class="btn-outline" onclick="document.getElementById('ed-modal-bg').classList.remove('open')">Cancel</button>
       <button class="btn-primary" id="ed-save-btn" onclick="saveDates()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit PIP Modal (all-in-one) -->
+<div class="modal-bg" id="ep-modal-bg">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-head">
+      <h2>Edit PIP</h2>
+      <button class="modal-close" onclick="document.getElementById('ep-modal-bg').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body" style="gap:1.25rem">
+
+      <div class="section-divider">Employee info</div>
+      <div class="form-row">
+        <div class="form-group"><label>Employee name</label><input type="text" id="ep-name"></div>
+        <div class="form-group"><label>Employee ID</label><input type="text" id="ep-id"></div>
+        <div class="form-group"><label>Business unit</label>
+          <select id="ep-division"><option value="">Select</option><option>Corporate</option><option>FinTech</option><option>ODS</option></select>
+        </div>
+        <div class="form-group"><label>Level</label>
+          <select id="ep-level"><option value="">Select</option><option>L3</option><option>L4</option><option>L5</option><option>L6</option><option>L7</option><option>L8</option></select>
+        </div>
+        <div class="form-group"><label>Manager email</label><input type="text" id="ep-manager" placeholder="manager@gojek.com"></div>
+        <div class="form-group"><label>PBP email</label><input type="text" id="ep-hrbp" placeholder="pbp@gojek.com"></div>
+      </div>
+
+      <div class="section-divider">PIP details</div>
+      <div class="form-row">
+        <div class="form-group"><label>PIP start date</label><input type="date" id="ep-start"></div>
+        <div class="form-group"><label>PIP end date</label><input type="date" id="ep-end"></div>
+        <div class="form-group full"><label>PIP plan link</label><input type="text" id="ep-reason" placeholder="Google Doc / Notion / Confluence link"></div>
+      </div>
+
+      <div class="section-divider">Milestones & check-in results</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#f5f5f3;border-radius:8px;padding:12px">
+          <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:#555">30-day check-in</div>
+          <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="date" id="ep-m1"></div>
+            <div class="form-group"><label>Result / notes</label><input type="text" id="ep-m1r" placeholder="e.g. On track, meeting objectives"></div>
+          </div>
+        </div>
+        <div style="background:#f5f5f3;border-radius:8px;padding:12px">
+          <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:#555">60-day check-in</div>
+          <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="date" id="ep-m2"></div>
+            <div class="form-group"><label>Result / notes</label><input type="text" id="ep-m2r" placeholder="e.g. Improved but needs more consistency"></div>
+          </div>
+        </div>
+        <div style="background:#f5f5f3;border-radius:8px;padding:12px">
+          <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:#555">Final review</div>
+          <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="date" id="ep-m3"></div>
+            <div class="form-group"><label>Result / notes</label><input type="text" id="ep-m3r" placeholder="e.g. Successfully completed PIP"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider">Status & result</div>
+      <div class="form-row">
+        <div class="form-group"><label>Status</label>
+          <select id="ep-status"><option>Active</option><option>Completed</option><option>Extended</option><option>Failed</option></select>
+        </div>
+        <div class="form-group"><label>Result</label>
+          <select id="ep-result"><option value="">— pending —</option><option value="No WL">No WL (passed)</option><option value="WL1">Warning Letter 1</option><option value="WL2">Warning Letter 2</option><option value="WL3">Warning Letter 3</option></select>
+        </div>
+        <div class="form-group full"><label>Add status note (optional)</label><input type="text" id="ep-note" placeholder="e.g. Extended due to medical leave"></div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <span id="ep-save-status"></span>
+      <button class="btn-outline" onclick="document.getElementById('ep-modal-bg').classList.remove('open')">Cancel</button>
+      <button class="btn-primary" id="ep-save-btn" onclick="saveEditPIP()">Save changes</button>
     </div>
   </div>
 </div>
