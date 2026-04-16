@@ -1,4 +1,4 @@
 {
-  "buildCommand": "sed -i.bak \"s/REPLACE_WITH_ENV_PASSWORD/$APP_PASSWORD/g\" index.html",
+  "buildCommand": "sh build.sh",
   "outputDirectory": "."
 }

@@ -1,0 +1,2 @@
+#!/bin/sh
+sed -i.bak "s/REPLACE_WITH_ENV_PASSWORD/$APP_PASSWORD/g" index.html
