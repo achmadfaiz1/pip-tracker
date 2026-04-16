@@ -302,7 +302,7 @@ textarea { resize: vertical; min-height: 70px; }
   <div class="modal">
     <div class="modal-head"><h2>Submit new PIP</h2><button class="modal-close" onclick="closeModal()">×</button></div>
     <div class="modal-body">
-      <div class="gs-note"><svg width="14" height="14" viewBox="0 0 16 16" fill="#0F6E56"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg>Submissions sync live to your GoTo Google Sheet.</div>
+      <div class="gs-note"><svg width="14" height="14" viewBox="0 0 16 16" fill="#0F6E56"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.5 3.5h1v4h-1V4.5zm0 5h1v1.5h-1V9.5z"/></svg>Submissions sync live to Performance Team Google Sheet.</div>
       <div class="section-divider">Employee info</div>
       <div class="form-row">
         <div class="form-group"><label>Employee name</label><input type="text" id="f-name" placeholder="Full name"></div>
@@ -437,6 +437,9 @@ async function loadFromSheet() {
       status: row.Status || row.status || 'Active',
       result: row.Result || row.result || '',
       notes: row.notes || [],
+      m1result: row.M1Result || row.m1result || '',
+      m2result: row.M2Result || row.m2result || '',
+      m3result: row.M3Result || row.m3result || '',
     }));
     nextId = pips.length > 0 ? Math.max(...pips.map(p => Number(p.id) || 0)) + 1 : 1;
     showLoadingState(false);
@@ -471,13 +474,33 @@ function showLoadingState(loading) {
 
 function getInitials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 function daysProgress(s,e){const sd=new Date(s),ed=new Date(e),n=new Date();return Math.max(0,Math.min(100,Math.round(((Math.min(n,ed)-sd)/(ed-sd))*100)));}
-function formatDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+function formatDate(d){
+  if(!d)return'—';
+  try {
+    const dt = new Date(d);
+    if(!isNaN(dt)){
+      const day=String(dt.getDate()).padStart(2,'0');
+      const mon=String(dt.getMonth()+1).padStart(2,'0');
+      return day+'/'+mon+'/'+dt.getFullYear();
+    }
+    const parts=String(d).split('-');
+    if(parts.length>=3) return parts[2].substring(0,2)+'/'+parts[1]+'/'+parts[0];
+  } catch(e){}
+  return String(d);
+}
 function statusBadge(s){const m={Active:'badge-active',Completed:'badge-completed',Extended:'badge-extended',Failed:'badge-failed'};return`<span class="badge ${m[s]||'badge-pending'}">${s||'—'}</span>`;}
 function resultBadge(r){if(!r)return`<span class="badge badge-pending">Pending</span>`;const m={'No WL':'badge-nowl','WL1':'badge-wl1','WL2':'badge-wl2','WL3':'badge-wl3'};return`<span class="badge ${m[r]||'badge-pending'}">${r}</span>`;}
 
 async function sendToSheet(payload){
   try {
-    const params = new URLSearchParams({ data: JSON.stringify(payload) });
+    // include milestone result fields
+    const fullPayload = {
+      ...payload,
+      m1result: payload.m1result || '',
+      m2result: payload.m2result || '',
+      m3result: payload.m3result || '',
+    };
+    const params = new URLSearchParams({ data: JSON.stringify(fullPayload) });
     await fetch(SHEET_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
     return true;
   } catch(e) { console.error('Sheet sync error:',e); return false; }
@@ -529,8 +552,88 @@ function renderTable(){
 }
 
 function viewDetail(id){
-  const p=pips.find(x=>x.id===id);if(!p)return;currentUpdateId=id;const prog=daysProgress(p.start,p.end);
-  document.getElementById('detail-content').innerHTML=`<div class="detail-wrap"><div class="detail-head"><div class="detail-avatar">${getInitials(p.name)}</div><div style="flex:1"><div style="font-size:15px;font-weight:500">${p.name} <span style="font-size:12px;color:#888;font-weight:400">${p.empId}</span></div><div style="font-size:12px;color:#888;margin-top:2px">${p.division} · ${p.level} · Manager: ${p.manager}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${statusBadge(p.status)} ${resultBadge(p.result)}</div></div><div class="detail-body"><div class="detail-section"><h3>PIP overview</h3><div class="detail-field"><div class="detail-field-label">HRBP</div><div class="detail-field-value">${p.hrbp}</div></div><div class="detail-field"><div class="detail-field-label">Period</div><div class="detail-field-value">${formatDate(p.start)} → ${formatDate(p.end)}</div></div><div class="detail-field"><div class="detail-field-label">Progress</div><div style="display:flex;align-items:center;gap:10px;margin-top:4px"><div class="prog-wrap" style="width:120px"><div class="prog-bar" style="width:${prog}%"></div></div><span style="font-size:12px;color:#888">${prog}%</span></div></div><div class="detail-field"><div class="detail-field-label">Performance issue</div><div class="detail-field-value" style="font-weight:400;font-size:13px;line-height:1.5">${p.reason}</div></div><div class="detail-field"><div class="detail-field-label">Improvement objectives</div><div class="detail-field-value" style="font-weight:400;font-size:13px;line-height:1.5">${p.objectives}</div></div></div><div class="detail-section"><h3>Milestones & timeline</h3><div class="timeline"><div class="tl-item"><div class="tl-dot"></div><div><div class="tl-text">PIP started</div><div class="tl-date">${formatDate(p.start)}</div></div></div><div class="tl-item"><div class="tl-dot ${!p.m1?'gray':''}"></div><div><div class="tl-text">30-day check-in</div><div class="tl-date">${formatDate(p.m1)}</div></div></div><div class="tl-item"><div class="tl-dot ${!p.m2?'gray':''}"></div><div><div class="tl-text">60-day check-in</div><div class="tl-date">${formatDate(p.m2)}</div></div></div><div class="tl-item"><div class="tl-dot ${!p.m3?'gray':''}"></div><div><div class="tl-text">Final review</div><div class="tl-date">${formatDate(p.m3)}</div></div></div><div class="tl-item"><div class="tl-dot"></div><div><div class="tl-text">PIP closes</div><div class="tl-date">${formatDate(p.end)}</div></div></div></div>${p.notes.length?`<h3 style="margin-top:1.5rem">Update notes</h3><div class="timeline" style="margin-top:10px">${p.notes.map(n=>`<div class="tl-item"><div class="tl-dot"></div><div><div class="tl-text">${n.text}</div><div class="tl-date">${n.date}</div></div></div>`).join('')}</div>`:''}</div></div><div class="detail-actions"><button class="btn-teal-outline" onclick="openUpdateModal(${p.id})">Update status / result</button><button class="btn-outline" onclick="showView('tracker')">Back to list</button></div></div>`;
+  const p=pips.find(x=>x.id===id);if(!p)return;currentUpdateId=id;
+  const prog=daysProgress(p.start,p.end);
+  const m1r=p.m1result||'';const m2r=p.m2result||'';const m3r=p.m3result||'';
+
+  function milestoneDot(date,result){
+    const color=result?'#1D9E75':(!date?'rgba(0,0,0,0.15)':'#9FE1CB');
+    return `<div class="tl-dot" style="background:${color};margin-top:14px"></div>`;
+  }
+  function milestoneResult(label,date,result,resultKey,dateKey){
+    const hasDate=!!date;
+    return `<div class="tl-item" style="align-items:flex-start">
+      ${milestoneDot(date,result)}
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="tl-text" style="font-weight:500">${label}</div>
+            <div class="tl-date">${hasDate?formatDate(date):'No date set'}</div>
+          </div>
+          <button class="btn-sm" onclick="openEditMilestone(${p.id},'${dateKey}','${resultKey}')" style="font-size:11px">Edit</button>
+        </div>
+        ${result?`<div style="margin-top:6px;padding:6px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041">${result}</div>`:'<div style="margin-top:6px;font-size:11px;color:#aaa;font-style:italic">No check-in result yet</div>'}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('detail-content').innerHTML=`
+    <div class="detail-wrap">
+      <div class="detail-head">
+        <div class="detail-avatar">${getInitials(p.name)}</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:500">${p.name} <span style="font-size:12px;color:#888;font-weight:400">${p.empId}</span></div>
+          <div style="font-size:12px;color:#888;margin-top:2px">${p.division} · ${p.level} · Manager: ${p.manager}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${statusBadge(p.status)} ${resultBadge(p.result)}</div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h3>PIP overview</h3>
+          <div class="detail-field"><div class="detail-field-label">PBP email</div><div class="detail-field-value" style="font-weight:400">${p.hrbp}</div></div>
+          <div class="detail-field">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="detail-field-label">Period</div>
+              <button class="btn-sm" style="font-size:11px" onclick="openEditDates(${p.id})">Edit dates</button>
+            </div>
+            <div class="detail-field-value">${formatDate(p.start)} → ${formatDate(p.end)}</div>
+          </div>
+          <div class="detail-field"><div class="detail-field-label">Progress</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+              <div class="prog-wrap" style="width:120px"><div class="prog-bar" style="width:${prog}%"></div></div>
+              <span style="font-size:12px;color:#888">${prog}%</span>
+            </div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">PIP plan link</div>
+            <div class="detail-field-value" style="font-weight:400;font-size:13px">
+              ${p.reason?`<a href="${p.reason}" target="_blank" style="color:#0F6E56;word-break:break-all">${p.reason}</a>`:'<span style="color:#aaa;font-style:italic">No link provided</span>'}
+            </div>
+          </div>
+          ${p.notes&&p.notes.length?`<div class="detail-field"><div class="detail-field-label">Update notes</div><div class="timeline" style="margin-top:6px">${p.notes.map(n=>`<div class="tl-item"><div class="tl-dot" style="flex-shrink:0;margin-top:4px"></div><div><div class="tl-text">${n.text}</div><div class="tl-date">${n.date}</div></div></div>`).join('')}</div></div>`:''}
+        </div>
+        <div class="detail-section">
+          <h3>Milestones & check-in results</h3>
+          <div class="timeline" style="gap:16px">
+            <div class="tl-item">
+              <div class="tl-dot" style="margin-top:4px"></div>
+              <div><div class="tl-text" style="font-weight:500">PIP started</div><div class="tl-date">${formatDate(p.start)}</div></div>
+            </div>
+            ${milestoneResult('30-day check-in',p.m1,m1r,'m1result','m1')}
+            ${milestoneResult('60-day check-in',p.m2,m2r,'m2result','m2')}
+            ${milestoneResult('Final review',p.m3,m3r,'m3result','m3')}
+            <div class="tl-item">
+              <div class="tl-dot" style="margin-top:4px"></div>
+              <div><div class="tl-text" style="font-weight:500">PIP closes</div><div class="tl-date">${formatDate(p.end)}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn-teal-outline" onclick="openUpdateModal(${p.id})">Update status / result</button>
+        <button class="btn-outline" onclick="showView('tracker')">Back to list</button>
+      </div>
+    </div>`;
   showView('detail');
 }
 
@@ -595,5 +698,42 @@ async function saveUpdate(){
 
 if(sessionStorage.getItem('pip_auth')==='true') loadFromSheet();
 </script>
+
+<!-- Edit Milestone Modal -->
+<div class="modal-bg" id="milestone-modal-bg">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head"><h2 id="milestone-modal-title">Edit milestone</h2><button class="modal-close" onclick="document.getElementById('milestone-modal-bg').classList.remove('open')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label id="milestone-date-label">Date</label><input type="date" id="ms-date"></div>
+      <div class="form-group"><label>Check-in result / notes</label><textarea id="ms-result" placeholder="e.g. On track, meeting objectives. Attendance improved to 95%..." style="min-height:90px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <span id="ms-status"></span>
+      <button class="btn-outline" onclick="document.getElementById('milestone-modal-bg').classList.remove('open')">Cancel</button>
+      <button class="btn-primary" id="ms-save-btn" onclick="saveMilestone()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Dates Modal -->
+<div class="modal-bg" id="dates-modal-bg">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head"><h2>Edit PIP dates</h2><button class="modal-close" onclick="document.getElementById('dates-modal-bg').classList.remove('open')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>PIP start date</label><input type="date" id="ed-start"></div>
+        <div class="form-group"><label>PIP end date</label><input type="date" id="ed-end"></div>
+        <div class="form-group"><label>30-day check-in</label><input type="date" id="ed-m1"></div>
+        <div class="form-group"><label>60-day check-in</label><input type="date" id="ed-m2"></div>
+        <div class="form-group full"><label>Final review</label><input type="date" id="ed-m3"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span id="ed-status"></span>
+      <button class="btn-outline" onclick="document.getElementById('dates-modal-bg').classList.remove('open')">Cancel</button>
+      <button class="btn-primary" id="ed-save-btn" onclick="saveDates()">Save</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
