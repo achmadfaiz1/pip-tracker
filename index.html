@@ -540,7 +540,23 @@ function showView(v){
   if(v==='dashboard')renderDashboard();if(v==='tracker')renderTable();
 }
 
-function openModal(){document.getElementById('modal-bg').classList.add('open');document.getElementById('save-status').textContent='';}
+function openModal(){
+  document.getElementById('modal-bg').classList.add('open');
+  document.getElementById('save-status').textContent='';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-id').value='';
+  document.getElementById('f-division').value='';
+  document.getElementById('f-level').value='';
+  document.getElementById('f-manager').value='';
+  document.getElementById('f-hrbp').value='';
+  document.getElementById('f-start').value='';
+  document.getElementById('f-end').value='';
+  document.getElementById('f-reason').value='';
+  document.getElementById('f-objectives').value='';
+  document.getElementById('f-m1').value='';
+  document.getElementById('f-m2').value='';
+  document.getElementById('f-m3').value='';
+}
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
 function openUpdateModal(id){currentUpdateId=id;const p=pips.find(x=>x.id===id);if(p){document.getElementById('u-status').value=p.status;document.getElementById('u-result').value=p.result||'';}document.getElementById('u-notes').value='';document.getElementById('update-status').textContent='';document.getElementById('update-modal-bg').classList.add('open');}
 function closeUpdateModal(){document.getElementById('update-modal-bg').classList.remove('open');}
