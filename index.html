@@ -217,6 +217,7 @@ textarea { resize: vertical; min-height: 70px; }
       <button class="nav-tab" id="tab-detail" style="display:none" onclick="showView('detail')">Detail</button>
     </div>
     <div class="nav-right">
+      <button class="btn-outline" onclick="loadFromSheet()" style="font-size:12px">↻ Refresh</button>
       <button class="btn-primary" onclick="openModal()">+ New PIP</button>
       <button class="btn-logout" onclick="logout()">Sign out</button>
     </div>
@@ -547,13 +548,12 @@ function closeUpdateModal(){document.getElementById('update-modal-bg').classList
 async function submitPIP(){
   const name=document.getElementById('f-name').value.trim();if(!name){alert('Please enter employee name.');return;}
   const pip={id:nextId++,name,empId:document.getElementById('f-id').value.trim(),division:document.getElementById('f-division').value.trim(),level:document.getElementById('f-level').value,manager:document.getElementById('f-manager').value.trim(),hrbp:document.getElementById('f-hrbp').value.trim(),start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,reason:document.getElementById('f-reason').value.trim(),objectives:document.getElementById('f-objectives').value.trim(),m1:document.getElementById('f-m1').value,m2:document.getElementById('f-m2').value,m3:document.getElementById('f-m3').value,status:'Active',result:'',notes:[],submittedAt:new Date().toISOString()};
-  pips.unshift(pip);
   const btn=document.getElementById('save-btn'),st=document.getElementById('save-status');
   btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing to Sheet...');
-  const ok=await sendToSheet({action:'create',...pip});
-  btn.disabled=false;btn.textContent='Save PIP';
-  if(ok){setSaveStatus(st,'ok','Saved to Sheet');setTimeout(()=>{closeModal();renderDashboard();},800);}
-  else{setSaveStatus(st,'err','Sheet sync failed — saved locally');setTimeout(()=>{closeModal();renderDashboard();},1200);}
+  await sendToSheet({action:'create',...pip});
+  setSaveStatus(st,'ok','Saved! Reloading...');
+  closeModal();
+  await loadFromSheet();
 }
 
 async function saveUpdate(){
@@ -562,10 +562,10 @@ async function saveUpdate(){
   const note=document.getElementById('u-notes').value.trim();if(note)p.notes.push({text:note,date:new Date().toISOString().split('T')[0]});
   const btn=document.getElementById('update-btn'),st=document.getElementById('update-status');
   btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing...');
-  const ok=await sendToSheet({action:'update',...p});
-  btn.disabled=false;btn.textContent='Save update';
-  if(ok){setSaveStatus(st,'ok','Saved');setTimeout(()=>{closeUpdateModal();viewDetail(currentUpdateId);},600);}
-  else{setSaveStatus(st,'err','Sync failed — saved locally');setTimeout(()=>{closeUpdateModal();viewDetail(currentUpdateId);},1000);}
+  await sendToSheet({action:'update',...p});
+  setSaveStatus(st,'ok','Saved! Reloading...');
+  closeUpdateModal();
+  await loadFromSheet();
 }
 
 if(sessionStorage.getItem('pip_auth')==='true') loadFromSheet();
