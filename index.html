@@ -475,17 +475,17 @@ function showLoadingState(loading) {
 function getInitials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 function daysProgress(s,e){const sd=new Date(s),ed=new Date(e),n=new Date();return Math.max(0,Math.min(100,Math.round(((Math.min(n,ed)-sd)/(ed-sd))*100)));}
 function formatDate(d){
-  if(!d)return'—';
-  try {
-    const dt = new Date(d);
-    if(!isNaN(dt)){
+  if(!d||d==='')return'—';
+  try{
+    const dt=new Date(d);
+    if(!isNaN(dt.getTime())){
       const day=String(dt.getDate()).padStart(2,'0');
       const mon=String(dt.getMonth()+1).padStart(2,'0');
       return day+'/'+mon+'/'+dt.getFullYear();
     }
-    const parts=String(d).split('-');
-    if(parts.length>=3) return parts[2].substring(0,2)+'/'+parts[1]+'/'+parts[0];
-  } catch(e){}
+  }catch(e){}
+  const p=String(d).split('-');
+  if(p.length>=3)return p[2].substring(0,2)+'/'+p[1]+'/'+p[0];
   return String(d);
 }
 function statusBadge(s){const m={Active:'badge-active',Completed:'badge-completed',Extended:'badge-extended',Failed:'badge-failed'};return`<span class="badge ${m[s]||'badge-pending'}">${s||'—'}</span>`;}
@@ -493,14 +493,7 @@ function resultBadge(r){if(!r)return`<span class="badge badge-pending">Pending</
 
 async function sendToSheet(payload){
   try {
-    // include milestone result fields
-    const fullPayload = {
-      ...payload,
-      m1result: payload.m1result || '',
-      m2result: payload.m2result || '',
-      m3result: payload.m3result || '',
-    };
-    const params = new URLSearchParams({ data: JSON.stringify(fullPayload) });
+    const params = new URLSearchParams({ data: JSON.stringify(payload) });
     await fetch(SHEET_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
     return true;
   } catch(e) { console.error('Sheet sync error:',e); return false; }
@@ -552,27 +545,32 @@ function renderTable(){
 }
 
 function viewDetail(id){
-  const p=pips.find(x=>x.id===id);if(!p)return;currentUpdateId=id;
+  const p=pips.find(x=>x.id===id);if(!p)return;
+  currentUpdateId=id;
+  window._detailId=id;
   const prog=daysProgress(p.start,p.end);
-  const m1r=p.m1result||'';const m2r=p.m2result||'';const m3r=p.m3result||'';
 
-  function milestoneDot(date,result){
-    const color=result?'#1D9E75':(!date?'rgba(0,0,0,0.15)':'#9FE1CB');
-    return `<div class="tl-dot" style="background:${color};margin-top:14px"></div>`;
+  function fd(d){return formatDate(d);}
+  function toInput(d){
+    if(!d)return'';
+    try{const dt=new Date(d);if(!isNaN(dt))return dt.toISOString().split('T')[0];}catch(e){}
+    return String(d).substring(0,10);
   }
-  function milestoneResult(label,date,result,resultKey,dateKey){
-    const hasDate=!!date;
-    return `<div class="tl-item" style="align-items:flex-start">
-      ${milestoneDot(date,result)}
+  function msDot(date,result){
+    const bg=result?'#1D9E75':(!date?'rgba(0,0,0,0.15)':'#9FE1CB');
+    return `<div style="width:10px;height:10px;border-radius:50%;background:${bg};flex-shrink:0;margin-top:14px"></div>`;
+  }
+  function msRow(label,dateVal,resultVal,dKey,rKey){
+    return `<div style="display:flex;gap:12px;align-items:flex-start">
+      ${msDot(dateVal,resultVal)}
       <div style="flex:1">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <div>
-            <div class="tl-text" style="font-weight:500">${label}</div>
-            <div class="tl-date">${hasDate?formatDate(date):'No date set'}</div>
-          </div>
-          <button class="btn-sm" onclick="openEditMilestone(${p.id},'${dateKey}','${resultKey}')" style="font-size:11px">Edit</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+          <div><div style="font-size:13px;font-weight:500">${label}</div><div style="font-size:11px;color:#888;margin-top:2px">${dateVal?fd(dateVal):'No date set'}</div></div>
+          <button class="btn-sm" style="font-size:11px" onclick="window.openMS(${id},'${dKey}','${rKey}')">Edit</button>
         </div>
-        ${result?`<div style="margin-top:6px;padding:6px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041">${result}</div>`:'<div style="margin-top:6px;font-size:11px;color:#aaa;font-style:italic">No check-in result yet</div>'}
+        ${resultVal
+          ?`<div style="margin-top:6px;padding:6px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041">${resultVal}</div>`
+          :`<div style="margin-top:4px;font-size:11px;color:#bbb;font-style:italic">No result recorded yet</div>`}
       </div>
     </div>`;
   }
@@ -592,13 +590,14 @@ function viewDetail(id){
           <h3>PIP overview</h3>
           <div class="detail-field"><div class="detail-field-label">PBP email</div><div class="detail-field-value" style="font-weight:400">${p.hrbp}</div></div>
           <div class="detail-field">
-            <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
               <div class="detail-field-label">Period</div>
-              <button class="btn-sm" style="font-size:11px" onclick="openEditDates(${p.id})">Edit dates</button>
+              <button class="btn-sm" style="font-size:11px" onclick="window.openED(${id})">Edit dates</button>
             </div>
-            <div class="detail-field-value">${formatDate(p.start)} → ${formatDate(p.end)}</div>
+            <div class="detail-field-value">${fd(p.start)} → ${fd(p.end)}</div>
           </div>
-          <div class="detail-field"><div class="detail-field-label">Progress</div>
+          <div class="detail-field">
+            <div class="detail-field-label">Progress</div>
             <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
               <div class="prog-wrap" style="width:120px"><div class="prog-bar" style="width:${prog}%"></div></div>
               <span style="font-size:12px;color:#888">${prog}%</span>
@@ -606,36 +605,104 @@ function viewDetail(id){
           </div>
           <div class="detail-field">
             <div class="detail-field-label">PIP plan link</div>
-            <div class="detail-field-value" style="font-weight:400;font-size:13px">
-              ${p.reason?`<a href="${p.reason}" target="_blank" style="color:#0F6E56;word-break:break-all">${p.reason}</a>`:'<span style="color:#aaa;font-style:italic">No link provided</span>'}
+            <div style="font-size:13px;margin-top:2px">
+              ${p.reason?`<a href="${p.reason}" target="_blank" style="color:#0F6E56;word-break:break-all">${p.reason}</a>`:'<span style="color:#bbb;font-style:italic">No link provided</span>'}
             </div>
           </div>
-          ${p.notes&&p.notes.length?`<div class="detail-field"><div class="detail-field-label">Update notes</div><div class="timeline" style="margin-top:6px">${p.notes.map(n=>`<div class="tl-item"><div class="tl-dot" style="flex-shrink:0;margin-top:4px"></div><div><div class="tl-text">${n.text}</div><div class="tl-date">${n.date}</div></div></div>`).join('')}</div></div>`:''}
+          ${p.notes&&p.notes.length?`
+          <div class="detail-field">
+            <div class="detail-field-label">Update notes</div>
+            <div class="timeline" style="margin-top:6px">${p.notes.map(n=>`
+              <div class="tl-item"><div class="tl-dot"></div><div><div class="tl-text">${n.text}</div><div class="tl-date">${n.date}</div></div></div>`).join('')}
+            </div>
+          </div>`:''}
         </div>
         <div class="detail-section">
           <h3>Milestones & check-in results</h3>
-          <div class="timeline" style="gap:16px">
-            <div class="tl-item">
-              <div class="tl-dot" style="margin-top:4px"></div>
-              <div><div class="tl-text" style="font-weight:500">PIP started</div><div class="tl-date">${formatDate(p.start)}</div></div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:4px"></div>
+              <div><div style="font-size:13px;font-weight:500">PIP started</div><div style="font-size:11px;color:#888;margin-top:2px">${fd(p.start)}</div></div>
             </div>
-            ${milestoneResult('30-day check-in',p.m1,m1r,'m1result','m1')}
-            ${milestoneResult('60-day check-in',p.m2,m2r,'m2result','m2')}
-            ${milestoneResult('Final review',p.m3,m3r,'m3result','m3')}
-            <div class="tl-item">
-              <div class="tl-dot" style="margin-top:4px"></div>
-              <div><div class="tl-text" style="font-weight:500">PIP closes</div><div class="tl-date">${formatDate(p.end)}</div></div>
+            ${msRow('30-day check-in',p.m1,p.m1result||'','m1','m1result')}
+            ${msRow('60-day check-in',p.m2,p.m2result||'','m2','m2result')}
+            ${msRow('Final review',p.m3,p.m3result||'','m3','m3result')}
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:4px"></div>
+              <div><div style="font-size:13px;font-weight:500">PIP closes</div><div style="font-size:11px;color:#888;margin-top:2px">${fd(p.end)}</div></div>
             </div>
           </div>
         </div>
       </div>
       <div class="detail-actions">
-        <button class="btn-teal-outline" onclick="openUpdateModal(${p.id})">Update status / result</button>
+        <button class="btn-teal-outline" onclick="openUpdateModal(${id})">Update status / result</button>
         <button class="btn-outline" onclick="showView('tracker')">Back to list</button>
       </div>
     </div>`;
   showView('detail');
 }
+
+function toInputDate(d){
+  if(!d)return'';
+  try{const dt=new Date(d);if(!isNaN(dt))return dt.toISOString().split('T')[0];}catch(e){}
+  return String(d).substring(0,10);
+}
+
+window.openMS = function(id, dKey, rKey){
+  currentUpdateId=id;
+  window._msKeys={dKey,rKey};
+  const p=pips.find(x=>x.id===id);if(!p)return;
+  const labels={m1:'30-day check-in',m2:'60-day check-in',m3:'Final review'};
+  document.getElementById('ms-modal-title').textContent='Edit '+( labels[dKey]||dKey);
+  document.getElementById('ms-date-label').textContent=(labels[dKey]||dKey)+' date';
+  document.getElementById('ms-date').value=toInputDate(p[dKey]);
+  document.getElementById('ms-result').value=p[rKey]||'';
+  document.getElementById('ms-save-status').textContent='';
+  document.getElementById('ms-save-btn').disabled=false;
+  document.getElementById('ms-save-btn').textContent='Save';
+  document.getElementById('ms-modal-bg').classList.add('open');
+};
+
+window.openED = function(id){
+  currentUpdateId=id;
+  const p=pips.find(x=>x.id===id);if(!p)return;
+  document.getElementById('ed-start').value=toInputDate(p.start);
+  document.getElementById('ed-end').value=toInputDate(p.end);
+  document.getElementById('ed-m1').value=toInputDate(p.m1);
+  document.getElementById('ed-m2').value=toInputDate(p.m2);
+  document.getElementById('ed-m3').value=toInputDate(p.m3);
+  document.getElementById('ed-save-status').textContent='';
+  document.getElementById('ed-save-btn').disabled=false;
+  document.getElementById('ed-save-btn').textContent='Save';
+  document.getElementById('ed-modal-bg').classList.add('open');
+};
+
+async function saveMilestone(){
+  const p=pips.find(x=>x.id===currentUpdateId);if(!p)return;
+  const {dKey,rKey}=window._msKeys;
+  p[dKey]=document.getElementById('ms-date').value;
+  p[rKey]=document.getElementById('ms-result').value.trim();
+  const btn=document.getElementById('ms-save-btn'),st=document.getElementById('ms-save-status');
+  btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing...');
+  await sendToSheet({action:'update',...p,m1result:p.m1result||'',m2result:p.m2result||'',m3result:p.m3result||''});
+  document.getElementById('ms-modal-bg').classList.remove('open');
+  await loadFromSheet();
+}
+
+async function saveDates(){
+  const p=pips.find(x=>x.id===currentUpdateId);if(!p)return;
+  p.start=document.getElementById('ed-start').value;
+  p.end=document.getElementById('ed-end').value;
+  p.m1=document.getElementById('ed-m1').value;
+  p.m2=document.getElementById('ed-m2').value;
+  p.m3=document.getElementById('ed-m3').value;
+  const btn=document.getElementById('ed-save-btn'),st=document.getElementById('ed-save-status');
+  btn.disabled=true;btn.textContent='Saving...';setSaveStatus(st,'ing','Syncing...');
+  await sendToSheet({action:'update',...p,m1result:p.m1result||'',m2result:p.m2result||'',m3result:p.m3result||''});
+  document.getElementById('ed-modal-bg').classList.remove('open');
+  await loadFromSheet();
+}
+
 
 function showView(v){
   ['dashboard','tracker','detail'].forEach(x=>document.getElementById('view-'+x).style.display='none');
@@ -699,38 +766,38 @@ async function saveUpdate(){
 if(sessionStorage.getItem('pip_auth')==='true') loadFromSheet();
 </script>
 
-<!-- Edit Milestone Modal -->
-<div class="modal-bg" id="milestone-modal-bg">
+<!-- Milestone Edit Modal -->
+<div class="modal-bg" id="ms-modal-bg">
   <div class="modal" style="max-width:440px">
-    <div class="modal-head"><h2 id="milestone-modal-title">Edit milestone</h2><button class="modal-close" onclick="document.getElementById('milestone-modal-bg').classList.remove('open')">×</button></div>
+    <div class="modal-head"><h2 id="ms-modal-title">Edit milestone</h2><button class="modal-close" onclick="document.getElementById('ms-modal-bg').classList.remove('open')">×</button></div>
     <div class="modal-body">
-      <div class="form-group"><label id="milestone-date-label">Date</label><input type="date" id="ms-date"></div>
-      <div class="form-group"><label>Check-in result / notes</label><textarea id="ms-result" placeholder="e.g. On track, meeting objectives. Attendance improved to 95%..." style="min-height:90px"></textarea></div>
+      <div class="form-group"><label id="ms-date-label">Date</label><input type="date" id="ms-date"></div>
+      <div class="form-group"><label>Check-in result / notes</label><textarea id="ms-result" placeholder="e.g. On track — attendance improved to 95%, meeting all objectives..." style="min-height:100px"></textarea></div>
     </div>
     <div class="modal-foot">
-      <span id="ms-status"></span>
-      <button class="btn-outline" onclick="document.getElementById('milestone-modal-bg').classList.remove('open')">Cancel</button>
+      <span id="ms-save-status"></span>
+      <button class="btn-outline" onclick="document.getElementById('ms-modal-bg').classList.remove('open')">Cancel</button>
       <button class="btn-primary" id="ms-save-btn" onclick="saveMilestone()">Save</button>
     </div>
   </div>
 </div>
 
 <!-- Edit Dates Modal -->
-<div class="modal-bg" id="dates-modal-bg">
+<div class="modal-bg" id="ed-modal-bg">
   <div class="modal" style="max-width:440px">
-    <div class="modal-head"><h2>Edit PIP dates</h2><button class="modal-close" onclick="document.getElementById('dates-modal-bg').classList.remove('open')">×</button></div>
+    <div class="modal-head"><h2>Edit PIP dates</h2><button class="modal-close" onclick="document.getElementById('ed-modal-bg').classList.remove('open')">×</button></div>
     <div class="modal-body">
       <div class="form-row">
         <div class="form-group"><label>PIP start date</label><input type="date" id="ed-start"></div>
         <div class="form-group"><label>PIP end date</label><input type="date" id="ed-end"></div>
         <div class="form-group"><label>30-day check-in</label><input type="date" id="ed-m1"></div>
         <div class="form-group"><label>60-day check-in</label><input type="date" id="ed-m2"></div>
-        <div class="form-group full"><label>Final review</label><input type="date" id="ed-m3"></div>
+        <div class="form-group full"><label>Final review date</label><input type="date" id="ed-m3"></div>
       </div>
     </div>
     <div class="modal-foot">
-      <span id="ed-status"></span>
-      <button class="btn-outline" onclick="document.getElementById('dates-modal-bg').classList.remove('open')">Cancel</button>
+      <span id="ed-save-status"></span>
+      <button class="btn-outline" onclick="document.getElementById('ed-modal-bg').classList.remove('open')">Cancel</button>
       <button class="btn-primary" id="ed-save-btn" onclick="saveDates()">Save</button>
     </div>
   </div>
